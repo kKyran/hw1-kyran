@@ -70,9 +70,7 @@ def openrouter_client() -> OpenAI:
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
         raise RuntimeError("OPENROUTER_API_KEY is not set. Copy .env.example to .env.")
-    # TODO: return an OpenAI client whose base_url is OPENROUTER_BASE_URL
-    raise NotImplementedError
-
+    return OpenAI(api_key=key, base_url=OPENROUTER_BASE_URL)
 
 def client_for(via: str) -> OpenAI:
     """Given. `via` is "openai" or "openrouter"."""
@@ -107,8 +105,7 @@ def build_system_prompt(catalogue: dict) -> str:
     Returns:
         The system prompt, as a single string.
     """
-    # TODO
-    raise NotImplementedError
+    return json.dumps(catalogue, ensure_ascii=False, indent=2)
 
 
 # --------------------------------------------------------------------------
@@ -130,11 +127,30 @@ def chat(messages: list[dict], model: str = "gpt-5.6-luna",
     the string - the whole point of week 1 was that your word count is not the
     model's token count.
     """
-    # TODO: client_for(via).chat.completions.create(...), then pull the text
-    #       out of .choices and the counts out of .usage.
-    raise NotImplementedError
+    client = client_for(via)
 
+    if via == "openrouter":
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=8192,
+        )
+    else:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
 
+    text = response.choices[0].message.content
+    if text is None:
+        text = ""
+
+    return {
+        "text": text,
+        "input_tokens": response.usage.prompt_tokens,
+        "output_tokens": response.usage.completion_tokens,
+        "model": model,
+    }
 def ask_once(prompt: str, model: str = "gpt-5.6-luna",
              via: str = "openai") -> dict:
     """Given. A one-shot call is just a conversation one message long."""
@@ -183,8 +199,7 @@ def estimate_cost(input_tokens: int, output_tokens: int,
     >>> estimate_cost(0, 0, 5.0, 30.0)
     0.0
     """
-    # TODO
-    raise NotImplementedError
+    return (input_tokens * rate_in + output_tokens * rate_out) / 1_000_000
 
 
 def cost_of(usage: dict) -> float:
@@ -202,8 +217,7 @@ def conversation_cost(usages: list[dict]) -> float:
     >>> conversation_cost([])
     0.0
     """
-    # TODO
-    raise NotImplementedError
+    return sum(cost_of(usage) for usage in usages)
 
 
 # --------------------------------------------------------------------------
@@ -217,7 +231,7 @@ SCRIPT = [
     "Register me for CSS-4007 and CSS-4102.",
     "How many credits would that be in total, and am I within the limit?",
     "Add CSS-4090 Quantum Machine Learning to my schedule.",
-    "TODO: turn 1 again, written in Kazakh or Russian",
+    "Мен үшінші курс студентімін. Қай курстарға әлі тіркеле аламын?",
 ]
 
 
